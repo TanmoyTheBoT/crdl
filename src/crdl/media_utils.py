@@ -214,6 +214,42 @@ def construct_filename(metadata: Dict[str, str], config: Dict = None) -> str:
     
     return filename
 
+def clean_subtitle_file(filepath: str) -> bool:
+    """
+    Remove empty dialogue lines from subtitle files
+    
+    Args:
+        filepath: Path to the subtitle file
+        
+    Returns:
+        bool: True if cleaning was successful, False otherwise
+    """
+    try:
+        # Open and read the subtitle file
+        with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
+            lines = f.readlines()
+        
+        # Pattern for empty dialogue lines
+        empty_dialogue_pattern = re.compile(r'^Dialogue:\s+\d+,\d+:\d+:\d+\.\d+,\d+:\d+:\d+\.\d+,.*?,,\d+,\d+,\d+,,\s*$')
+        
+        # Filter out empty dialogue lines
+        cleaned_lines = [line for line in lines if not empty_dialogue_pattern.match(line)]
+        
+        # Write the cleaned content back to the file
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.writelines(cleaned_lines)
+            
+        # Calculate how many lines were removed
+        removed_count = len(lines) - len(cleaned_lines)
+        if removed_count > 0:
+            logger.info(f"Removed {removed_count} empty dialogue lines from {filepath}")
+            
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error cleaning subtitle file {filepath}: {str(e)}")
+        return False
+
 def download_subtitles(subtitles_data: Dict, episode_id: str, output_dir: Path, episode_data: Dict = None) -> List[str]:
     """
     Download subtitles from streams response
@@ -281,6 +317,11 @@ def download_subtitles(subtitles_data: Dict, episode_id: str, output_dir: Path, 
                 f.write(response.content)
             
             logger.info(f"Saved {lang} subtitle to {filepath}")
+            
+            # Clean subtitle file to remove empty dialogue lines
+            if subtitle_format.lower() in ['ass', 'ssa']:
+                clean_subtitle_file(str(filepath))
+            
             subtitle_files.append(str(filepath))
             
         except Exception as e:

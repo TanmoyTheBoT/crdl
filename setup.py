@@ -27,7 +27,6 @@ setup(
     install_requires=[
         "requests",
         "pywidevine",
-        "pathlib",
         "setuptools",
     ],    entry_points={
         "console_scripts": [
