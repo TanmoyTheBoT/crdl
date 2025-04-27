@@ -1,0 +1,43 @@
+[project]
+name = "crdl"
+dynamic = ["version"]
+description = "A simple crunchyroll downloader"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [
+  { name = "TanmoyTheBoT", email = "tanmoysarkershuvo@gmail.com" }
+]
+dependencies = [
+  "pywidevine",
+  "requests",
+]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+]
+[project.urls]
+Homepage = "https://github.com/TanmoyTheBoT/crdl"
+
+[project.scripts]
+crdl = "crdl.cli:main"
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.dynamic]
+version = { attr = "crdl.version.__version__" }
+
+[[tool.uv.index]]
+name = "testpypi"
+url = "https://test.pypi.org/simple/"
+publish-url = "https://test.pypi.org/legacy/"
+explicit = true

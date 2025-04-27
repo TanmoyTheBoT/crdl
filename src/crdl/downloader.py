@@ -197,7 +197,7 @@ class CrunchyrollDownloader:
             if drm_info:
                 logger.info(f"Successfully extracted DRM info from MPD:")
                 if drm_info.get('pssh'):
-                    logger.info(f"  PSSH: {drm_info['pssh'][:30]}...")
+                    logger.info(f"  PSSH: {drm_info['pssh']}")
                 if drm_info.get('kid'):
                     logger.info(f"  KID: {drm_info['kid']}")
                 if drm_info.get('license_url'):
@@ -246,7 +246,7 @@ class CrunchyrollDownloader:
         """
         try:
             logger.info(f"Getting license key for {stream_type.upper()} stream")
-            logger.info(f"PSSH: {pssh[:30]}...")
+            logger.info(f"PSSH: {pssh}")
             logger.info(f"License URL: {license_url}")
             
             # Initialize PyWidevine CDM
