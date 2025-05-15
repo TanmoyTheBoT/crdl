@@ -10,10 +10,11 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import requests
+import cloudscraper
 
 from .api import CrunchyrollAPI
-from .config import save_json
-from .drm_utils import decode_pssh, extract_mpd_info, create_pssh_object
+from .config import save_json, CrunchyrollConfig
+from .drm_utils import decode_pssh, extract_mpd_info, create_pssh_object, get_license_from_response
 from .media_utils import (download_subtitles, extract_chapter_info, 
                          extract_metadata, construct_filename, 
                          clean_temp_files, mux_media_files, construct_series_folder_name, construct_season_folder_name)
@@ -230,6 +231,55 @@ class CrunchyrollDownloader:
             logger.error(f"Error parsing MPD: {str(e)}", exc_info=True)
             return None
 
+    def _get_cloudscraper_session(self):
+        """
+        Get a cloudscraper session for bypassing Cloudflare
+        
+        Returns:
+            cloudscraper.CloudScraper: Session with Cloudflare bypass
+        """
+        try:
+            
+            scraper = cloudscraper.create_scraper(
+                browser={
+                    'browser': 'chrome',
+                    'platform': 'windows',
+                    'desktop': True,
+                    'mobile': False
+                },
+                delay=8,
+                interpreter='js2py',
+                allow_brotli=True,
+                cipherSuite='ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-RSA-AES128-SHA:ECDHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA:AES256-SHA'
+            )
+            
+            # Set basic headers
+            scraper.headers.update({
+                'User-Agent': CrunchyrollConfig.USER_AGENT_PC,
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1',
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'none',
+                'Sec-Fetch-User': '?1'
+            })
+            
+            # Add cookies from API if available
+            if self.api.cookies:
+                for cookie in self.api.cookies:
+                    scraper.cookies.set(cookie.name, cookie.value)
+                    
+            logger.info("Created CloudScraper session for Cloudflare bypass")
+            return scraper
+        except Exception as e:
+            logger.error(f"Failed to create CloudScraper session: {str(e)}")
+            # Fallback to regular requests session
+            logger.warning("Falling back to regular requests session")
+            return requests.Session()
+            
     def get_license_key(self, license_url, pssh, video_token=None, mpd_url=None, stream_type="video"):
         """
         Get the content decryption key from the license server
@@ -326,119 +376,106 @@ class CrunchyrollDownloader:
                 if asset_id_match:
                     asset_id = asset_id_match.group(1)
                     logger.info(f"Extracted asset_id: {asset_id}")
-            
+
+            # Go directly to Crunchyroll license request
             license_acquired = False
             license_res = None
             
-            # Try DRM Today method first if we have all required info
-            if asset_id and self.api.access_token and self.api.account_id:
-                # Get DRM auth data
-                auth_data = self.api.get_drm_auth(asset_id)
-                
-                if auth_data and auth_data.get("token") and auth_data.get("custom_data"):
-                    # Use the DRM Today license server
-                    drmtoday_license_url = "https://lic.drmtoday.com/license-proxy-widevine/cenc/"
-                    
-                    # Prepare headers for DRM Today license request
-                    headers = {
-                        'Content-Type': 'application/octet-stream',
-                        'User-Agent': self.api.config.USER_AGENT,
-                        'dt-custom-data': auth_data.get("custom_data", ""),
-                        'x-dt-auth-token': auth_data.get("token", ""),
-                        'Accept': '*/*',
-                        'Origin': 'https://static.crunchyroll.com',
-                        'Referer': 'https://static.crunchyroll.com/'
-                    }
-                    
-                    logger.info("Using DRM Today license server with auth token")
-                    
-                    response = requests.post(
-                        drmtoday_license_url, 
-                        headers=headers, 
-                        data=challenge
-                    )
-                    
-                    if response.status_code == 200:
-                        logger.info("DRM Today license request successful!")
-                        license_acquired = True
-                        
-                        # DRM Today returns JSON with a base64 license
-                        try:
-                            json_response = json.loads(response.content)
-                            if 'license' in json_response:
-                                logger.info("Found license in JSON response")
-                                license_res = base64.b64decode(json_response['license'])
-                            else:
-                                logger.error(f"JSON response missing license field")
-                                license_res = response.content
-                        except json.JSONDecodeError:
-                            logger.error("Failed to parse DRM Today response as JSON, using raw response")
-                            license_res = response.content
-                    else:
-                        logger.error(f"DRM Today license request failed with status code: {response.status_code}")
-                        logger.error(f"Response: {response.text}")
+            # Create a cloudscraper session for Cloudflare bypass
+            scraper = self._get_cloudscraper_session()
             
-            # If DRM Today method failed, try Crunchyroll direct method
-            if not license_acquired:
-                logger.info("Trying direct license request to Crunchyroll")
-                headers = {
-                    'Content-Type': 'application/octet-stream',
-                    'User-Agent': self.api.config.USER_AGENT,
-                    'X-Cr-Content-Type': 'mp4',
-                    'X-Cr-Video-Token': video_token,
-                    'Accept': '*/*',
-                    'Accept-Language': 'en-US,en;q=0.9',
-                    'Origin': 'https://static.crunchyroll.com',
-                    'Referer': 'https://static.crunchyroll.com/'
-                }
+            # Direct Crunchyroll license request
+            logger.info("Making direct license request to Crunchyroll")
+            
+            # Use the license URL from config or the one provided
+            license_url = license_url or self.api.config.LICENSE_URL 
+            logger.info(f"Using license URL: {license_url}")
+            
+            # Extract media ID from episode
+            media_id = None
+            if mpd_url:
+                # Try to extract media ID for content-id header
+                media_id_match = re.search(r'/([^/]+)/evs', mpd_url)
+                if media_id_match:
+                    media_id = media_id_match.group(1)
+                    logger.info(f"Extracted media_id: {media_id}")
+            
+            
+            headers = {
+                'Content-Type': 'application/octet-stream',
+                'User-Agent': CrunchyrollConfig.USER_AGENT_PC,
+                'Accept': '*/*',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Origin': 'https://static.crunchyroll.com',
+                'Referer': 'https://static.crunchyroll.com/',
+                'Connection': 'keep-alive',
+                'X-Cr-Content-Type': 'mp4',
+                'Sec-Ch-Ua': '"Chromium";v="129", "Google Chrome";v="129", "Not?A_Brand";v="24"',
+                'Sec-Ch-Ua-Mobile': '?0',
+                'Sec-Ch-Ua-Platform': '"Windows"'
+            }
+            
+            # Add content-id header if we have a media ID
+            if media_id:
+                headers['X-Cr-Content-Id'] = media_id
+            
+            # Add video token if available
+            if video_token:
+                headers['X-Cr-Video-Token'] = video_token
+            
+            # Add authorization header if available
+            if self.api.access_token:
+                headers['Authorization'] = f'Bearer {self.api.access_token}'
+            
+            try:
+                # Create a new CloudScraper session for each attempt to avoid stale cookies/headers
+                license_scraper = cloudscraper.create_scraper(
+                    browser={
+                        'browser': 'chrome',
+                        'platform': 'windows',
+                        'version': '129.0.0.0',
+                        'desktop': True,
+                        'mobile': False
+                    },
+                    delay=8,
+                    interpreter='js2py',
+                    allow_brotli=True,
+                    cipherSuite='ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384'
+                )
                 
-                if self.api.access_token:
-                    headers['Authorization'] = f'Bearer {self.api.access_token}'
+                # Set all headers for this specific request
+                for header, value in headers.items():
+                    license_scraper.headers[header] = value
                 
-                response = requests.post(
+                # Make the license request
+                logger.info(f"Making license request to: {license_url}")
+                logger.info(f"Using headers: {license_scraper.headers}")
+                
+                # Add cookies from API
+                if self.api.cookies:
+                    for cookie in self.api.cookies:
+                        license_scraper.cookies.set(cookie.name, cookie.value)
+                
+                response = license_scraper.post(
                     license_url, 
-                    headers=headers, 
                     data=challenge,
-                    cookies=self.api.cookies
+                    timeout=30  # Increase timeout for CF challenge
                 )
                 
                 if response.status_code == 200:
                     license_acquired = True
-                    license_res = response.content
-                    logger.info("Direct license request successful!")
+                    # Process the license response - extract from JSON if needed
+                    license_res = get_license_from_response(response.content)
+                    logger.info("Direct license request successful with CloudScraper!")
                 else:
-                    logger.error(f"Direct license request failed with status code: {response.status_code}")
-                    
-                    # Try with token in URL as last resort
-                    logger.info(f"Trying alternative method with token in URL...")
-                    license_url_with_token = license_url
-                    if video_token:
-                        if '?' in license_url:
-                            license_url_with_token = f"{license_url}&token={video_token}"
-                        else:
-                            license_url_with_token = f"{license_url}?token={video_token}"
-                    
-                    # Remove token from header for this attempt
-                    alt_headers = headers.copy()
-                    if 'X-Cr-Video-Token' in alt_headers:
-                        del alt_headers['X-Cr-Video-Token']
-                        
-                    response = requests.post(
-                        license_url_with_token, 
-                        headers=alt_headers, 
-                        data=challenge,
-                        cookies=self.api.cookies
-                    )
-                    
-                    if response.status_code == 200:
-                        license_acquired = True
-                        license_res = response.content
-                        logger.info("Alternative license request successful!")
-                    else:
-                        logger.error(f"Alternative method also failed with status code: {response.status_code}")
-            
+                    logger.error(f"Direct license request with CloudScraper failed with status code: {response.status_code}")
+                    logger.error(f"Response text: {response.text[:500]}")
+            except Exception as e:
+                logger.error(f"Error using CloudScraper for license request: {str(e)}", exc_info=True)
+                
             if not license_acquired or license_res is None:
-                logger.error("All license acquisition methods failed")
+                logger.error("License acquisition failed")
                 return None
             
             logger.info("License acquired, parsing response")

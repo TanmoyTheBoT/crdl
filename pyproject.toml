@@ -9,6 +9,7 @@ authors = [
   { name = "TanmoyTheBoT", email = "tanmoysarkershuvo@gmail.com" }
 ]
 dependencies = [
+  "cloudscraper",
   "pywidevine",
   "requests",
 ]

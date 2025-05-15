@@ -22,7 +22,12 @@ class CrunchyrollConfig:
 
     # Headers
     AUTHORIZATION = 'Basic eHVuaWh2ZWRidDNtYmlzdWhldnQ6MWtJUzVkeVR2akUwX3JxYUEzWWVBaDBiVVhVbXhXMTE='
-    USER_AGENT = 'Crunchyroll/3.78.3 Android/15 okhttp/4.12.0'
+    USER_AGENT = 'Crunchyroll/3.81.8 Android/15 okhttp/4.12.0'
+    USER_AGENT_PC = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36'
+
+    
+    # License URL
+    LICENSE_URL = 'https://cr-license-proxy.prd.crunchyrollsvc.com/v1/license/widevine'
     
     # Base config directory in user's home folder
     CONFIG_BASE = os.path.join(os.path.expanduser("~"), ".config", "crdl")

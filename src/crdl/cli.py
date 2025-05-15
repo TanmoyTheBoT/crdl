@@ -458,56 +458,42 @@ def process_series(api, downloader, series_id, locale, cms_data, audio_langs=Non
 
 def main():
     """Main application entry point"""
-    global api_instance
-    
-    # Register cleanup handlers for proper exit in all scenarios
-    register_cleanup_handlers()
-    
-    # Parse command line arguments
     args = parse_arguments()
     
-    # Check if version flag is set
+    # Show version information if requested
     if args.version:
-        print(f"{__version__}")
+        print(f"Crunchyroll Downloader v{__version__}")
         return
     
-    # Configure logging level based on verbose flag
+    # Set log level
     if args.verbose:
         logger.setLevel(logging.DEBUG)
-        for handler in logger.handlers:
-            if isinstance(handler, logging.FileHandler):
-                handler.setLevel(logging.DEBUG)
-    
-    # Get credentials - prioritize command line args then saved credentials
-    username, password = None, None
-    
-    # If username or password is provided, save them
-    if args.username or args.password:
-        username = args.username
-        password = args.password
-        
-        # Check for incomplete credentials
-        if not username or not password:
-            logger.error("Both username and password must be provided.")
-            print("\nError: Both username (-u) and password (-p) must be provided.")
-            print("Example: python a.py -u your_username -p your_password --episode EPISODE_ID")
-            return
-            
-        # Save valid credentials
-        save_credentials(username, password)
     else:
-        # Try to load saved credentials
-        username, password = load_credentials()
-        if not username or not password:
-            logger.error("No credentials provided or found in saved credentials.")
-            print("\nError: No login credentials provided or found.")
-            print("Please provide your Crunchyroll credentials to login:")
-            print("  python a.py -u your_username -p your_password [other options]")
-            print("\nCredentials will be saved for future use in ~/.config/crdl/credentials.json")
+        logger.setLevel(logging.INFO)
+    
+    # Try to get credentials
+    username = args.username
+    password = args.password
+    
+    # If not provided in command line, try to load from file
+    if not username or not password:
+        loaded_username, loaded_password = load_credentials()
+        
+        # Use loaded credentials if available
+        if loaded_username and loaded_password:
+            logger.info("Using saved credentials")
+            username = loaded_username
+            password = loaded_password
+        else:
+            logger.error("No credentials provided. Use --username and --password arguments or save credentials.")
             return
+    else:
+        # Save provided credentials for future use
+        save_credentials(username, password)
     
     # Initialize the API client with config directories
     api = CrunchyrollAPI(username, password, config_dirs=config_dirs)
+    global api_instance
     api_instance = api  # Store in global variable for signal handlers
     downloader = None
     
@@ -556,46 +542,37 @@ def main():
         # Initialize the downloader with configuration
         downloader = CrunchyrollDownloader(api, download_dir, config)
         
-        # Process content based on provided arguments
+        # Register cleanup handlers after initialization
+        register_cleanup_handlers()
+        
+        # Check required parameters
         if args.episode:
-            # Download a single episode
-            success = process_episode(api, downloader, args.episode, args.locale, cms_data, args.audio, args.quality)
-            if success:
-                logger.info(f"Successfully downloaded episode: {args.episode}")
-            else:
-                logger.error(f"Failed to download episode: {args.episode}")
-        
+            # Process single episode
+            if not process_episode(api, downloader, args.episode, args.locale, cms_data, args.audio, args.quality):
+                logger.error(f"Failed to process episode {args.episode}")
         elif args.season:
-            # Download all episodes in a season
-            logger.info(f"Processing entire season: {args.season}")
-            try:
-                results = process_season(api, downloader, args.season, args.locale, cms_data, args.audio, args.quality)
-                
-                # Count successes and failures
-                successes = sum(1 for r in results if r[1])
-                failures = sum(1 for r in results if not r[1])
-                
-                logger.info(f"Season download completed. Successfully downloaded {successes} episodes. Failed to download {failures} episodes.")
-            except Exception as e:
-                logger.error(f"Error processing season: {str(e)}")
-        
+            # Process single season
+            if not process_season(api, downloader, args.season, args.locale, cms_data, args.audio, args.quality):
+                logger.error(f"Failed to process season {args.season}")
         elif args.series:
-            # Process series and download if confirmed
-            process_series(api, downloader, args.series, args.locale, cms_data, args.audio, args.quality)
-        
+            # Process entire series
+            if not process_series(api, downloader, args.series, args.locale, cms_data, args.audio, args.quality):
+                logger.error(f"Failed to process series {args.series}")
         else:
-            # No specific content requested
-            logger.info("No specific content requested. Use --series, --season, or --episode arguments.")
-
+            # No content selected
+            logger.error("No content selected. You must specify --episode, --season, or --series.")
+            return
+            
+        logger.info("All tasks completed")
         
     except KeyboardInterrupt:
-        # Let cleanup_handler do the work
-        pass
+        logger.info("Process interrupted by user")
+        # Cleanup will be handled by the signal handler
     except Exception as e:
         logger.error(f"An error occurred: {str(e)}", exc_info=True)
-    
-    # Print a simple message at the end - atexit will handle cleanup
-    logger.info("Crunchyroll Downloader finished")
+    finally:
+        # Perform cleanup if not already done
+        cleanup_streams()
 
 if __name__ == '__main__':
     main()

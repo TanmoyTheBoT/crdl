@@ -403,3 +403,33 @@ def extract_mpd_info(mpd_content: str) -> Dict:
             result['kid'] = pssh_info['kid']
     
     return result 
+
+def get_license_from_response(response_content):
+    """
+    Extract license from Crunchyroll/DRMToday license server response
+    
+    Args:
+        response_content: Binary response content
+        
+    Returns:
+        bytes: Decoded license data
+    """
+    import json
+    import base64
+    
+    try:
+        # First try to parse as JSON
+        response_json = json.loads(response_content)
+        
+        # Check if the response contains a base64-encoded license field
+        if 'license' in response_json:
+            return base64.b64decode(response_json['license'])
+        else:
+            # Return the original response if no license field found
+            return response_content
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        # Not a JSON response, return as-is
+        return response_content
+    except Exception as e:
+        logging.error(f"Error parsing license response: {str(e)}")
+        return response_content 
