@@ -1,157 +1,115 @@
 # crdl 🎬
 
-A simple crunchyroll downloader.
+A command-line tool for downloading content from Crunchyroll with customizable quality options and output settings.
 
-## 🌟 Key Features
+<p align="center">
+  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.8%2B-blue.svg" alt="Python Version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"></a>
+  <a href="https://badge.fury.io/py/crdl"><img src="https://badge.fury.io/py/crdl.svg?nocache=1" alt="PyPI version"></a>
+  <a href="https://pepy.tech/projects/crdl"><img src="https://static.pepy.tech/badge/crdl" alt="PyPI Downloads"></a>
+</p>
 
-### Content Management
-- 📺 **Content Selection**: Download specific episodes, seasons, or entire series
-- 🎨 **Quality Options**: Choose between different video quality settings (best, 1080p, 720p, worst, etc.)
-- 📂 **Output Customization**: Configure output directory and naming conventions
+## ✨ Features
 
-### Security & Performance
-- 🔐 **Robust Token Management**: Automatic handling of access token expiration and refresh
-- 🧹 **Stream Cleanup**: Efficient management of stream resources
-- 🔒 **Credential Storage**: Secure storage of credentials for future use
+- 📺 Download specific episodes, seasons, or entire series
+- 🎨 Choose between different video quality settings
+- 🔐 Automatic token management and stream cleanup
+- 💻 Cross-platform compatibility (Windows, macOS, Linux)
+- 🔑 DRM support with Widevine CDM
 
-### Platform Support
-- 💻 **Cross-Platform**: Works seamlessly on Windows, macOS, and Linux
-- ⚙️ **Standardized Paths**: Consistent configuration across all platforms
+## 📋 Prerequisites
 
-## 📋 Requirements
+1. 🐍 **[Python 3.8+](https://www.python.org/downloads/)**
+2. 📥 **[N_m3u8DL-RE](https://github.com/nilaoda/N_m3u8DL-RE)** (in PATH)
+3. 🎬 **[ffmpeg](https://ffmpeg.org/download.html)** (in PATH)
+4. 📦 **[mkvmerge](https://mkvtoolnix.download/downloads.html)** (in PATH)
+5. 🔓 **[mp4decrypt](https://www.bento4.com/downloads/)** (in PATH)
 
-### Software Dependencies
-- 🐍 Python 3.6+
-- 📥 N_m3u8DL-RE (must be in PATH)
-- 🎬 ffmpeg (must be in PATH)
-- 📦 mkvmerge (must be in PATH)
-- 🔓 mp4decrypt (must be in PATH)
+For DRM content: Place `device.wvd` in `~/.config/crdl/widevine/`
 
-### Account & DRM
-- 👤 Valid Crunchyroll account credentials
-- 🔑 Widevine CDM for DRM content
-  - Place in: `~/.config/crdl/widevine/device.wvd`
+⚠️ **Note**: Due to legal reasons, this CDM file is not provided with the project.
 
 ## 📥 Installation
 
-Choose one of these installation methods:
-
-### 🚀 Quick Install (Recommended)
 ```bash
 pip install crdl
 ```
 
-### 🔧 Development Install
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/TanmoyTheBoT/crdl.git
-   cd crdl
-   ```
+## 🚀 Usage
 
-2. Install in development mode:
-   ```bash
-   pip install -e .
-   ```
-This makes the `crdl` command available globally while allowing you to modify the source code.
-
-## 🚀 Usage Guide
-
-### 🔰 First Time Setup
 ```bash
-crdl --username YOUR_USERNAME --password YOUR_PASSWORD --episode EPISODE_ID
-```
-Your credentials will be securely saved in `~/.config/crdl/credentials.json`
+# First time setup with credentials
+crdl -u YOUR_USERNAME -p YOUR_PASSWORD -e EPISODE_ID
 
-### 📺 Basic Usage
-After initial setup, you can download content easily:
-```bash
-crdl --episode EPISODE_ID    # Download a single episode
-crdl --series SERIES_ID      # Browse and select from a series
-```
+# Download episode
+crdl -e EPISODE_ID
 
-### ⚙️ Command Line Options
-
-#### Authentication
-- 👤 `-u, --username`: Crunchyroll username
-- 🔑 `-p, --password`: Crunchyroll password
-
-#### Content Selection
-- 📺 `-s, --series`: Series ID to browse and download
-- 🎬 `-e, --episode`: Specific episode ID
-- 📂 `--season`: Season ID for batch download
-
-#### Download Settings
-- 🌍 `--locale`: Content locale (default: en-US)
-- 🎵 `-a, --audio`: Audio languages (e.g., "ja-JP,en-US" or "all")
-- 📁 `-o, --output`: Custom output directory
-- 📊 `-q, --quality`: Video quality (1080p, 720p, best, worst)
-- 🏷️ `-r, --release-group`: Custom release group name
-
-#### Advanced
-- 📝 `-v, --verbose`: Enable detailed logging
-
-## 🗂️ Configuration Structure
-
-### 📁 Directory Layout
-```
-~/.config/crdl/
-  ├── credentials.json    # 🔐 Saved credentials
-  ├── json/              # 📊 API responses & debug info
-  ├── widevine/          # 🔑 DRM files
-  │   └── device.wvd     # Required Widevine CDM
-  └── logs/              # 📝 Application logs
-      └── crunchyroll_downloader.log
+# Browse and Download entire series
+crdl -s SERIES_ID
 ```
 
-## 🔧
+## ⚙️ Command-Line Options
 
-### 🌊 Stream Management
-Our robust stream handling system:
-- 🔄 **Smart Token Refresh**: Auto-refresh of expired tokens
-- 📊 **Active Stream Tracking**: Prevents resource leaks
-- ⚡ **Signal Handling**: Graceful handling of SIGINT/SIGTERM
-- 🧹 **Auto Cleanup**: Guaranteed resource cleanup on exit
+```
+options:
+  -h, --help            show this help message and exit
+  --version             Show version information and exit
 
-prevents "TOO_MANY_ACTIVE_STREAMS" error.
+Authentication:
+  --username USERNAME, -u USERNAME
+                        Crunchyroll username
+  --password PASSWORD, -p PASSWORD
+                        Crunchyroll password
 
-### 🔐 Security Features
+Content Selection:
+  --series SERIES, -s SERIES
+                        Series ID to download
+  --season SEASON       Season ID to download
+  --episode EPISODE, -e EPISODE
+                        Episode ID to download
+  --locale LOCALE       Content locale (default: en-US)
+  --audio AUDIO, -a AUDIO
+                        Audio languages to download (comma-separated, e.g., "ja-JP,en-US" or "all")
 
-#### Token Management
-- ⏰ **Expiry Tracking**: Smart token lifetime monitoring
-- 📈 **Efficient Renewal**: Uses refresh tokens
-- 🛡️ **Rate Protection**: Prevents token refresh spam
+Output Options:
+  --output OUTPUT, -o OUTPUT
+                        Output directory
+  --verbose, -v         Enable verbose logging
+  --quality {1080p,720p,best,worst}, -q {1080p,720p,best,worst}
+                        Video quality (1080p, 720p, best, or worst)
+  --release-group RELEASE_GROUP, -r RELEASE_GROUP
+                        Release group name for filename
+```
 
-#### Credential Handling
-- 🔒 **Secure Storage**: credential storage
-- 💾 **Single Login**: Remember credentials for future use
-- 🌐 **Cross-Platform**: Consistent paths across OS
+## 🗂️ Configuration
 
-## 🔒 DRM Content Setup
+```~/.config/crdl/
+  ├── credentials.json  # Saved credentials
+  ├── json/            # API responses
+  ├── widevine/        # DRM files
+  │   └── device.wvd   # Required for DRM
+  └── logs/            # Application logs
+```
+## ❓ Troubleshooting
 
-### Widevine Configuration
-1. 📥 Obtain a valid Widevine CDM file
-2. 📁 Place `device.wvd` in: `~/.config/crdl/widevine/`
-3. ✅ Only one device file needed
+- 🔑 Verify your Crunchyroll credentials and subscription status
+- 📦 Ensure all required tools are updated and in your PATH
+- 🔍 Run with `-v` for detailed logging
+- 📝 Check logs at: `~/.config/crdl/logs/crunchyroll_downloader.log`
 
-## ❓ Troubleshooting Guide
+## ⚠️ Disclaimer
 
-Having issues? Check these common solutions:
-
-### 🔍 Quick Fixes
-1. 🔑 Verify your Crunchyroll credentials
-2. 📦 Update N_m3u8DL-RE to latest version
-3. 🔍 Run with `--verbose` for detailed logs
-
-### 📋 Additional Checks
-4. 💳 Confirm Premium account status
-5. 📝 Review logs at: `~/.config/crdl/logs/crunchyroll_downloader.log`
-6. 🔐 Verify Widevine CDM at: `~/.config/crdl/widevine/device.wvd`
-
-## 📜 Legal Notice
-
-This project is for educational purposes only.  
-Please respect Crunchyroll's terms of service.
+> This project is for educational purposes only. Please respect Crunchyroll's terms of service and copyright regulations. You need a Crunchyroll Premium subscription to access premium content. This tool is not affiliated with, maintained, authorized, sponsored, or officially associated with Crunchyroll LLC or any of its subsidiaries or affiliates. Use of this application may violate Crunchyroll's Terms of Service and could be illegal in your country. You are solely responsible for your use of this software.
 
 ## 👥 Contributors
 
-👨‍💻 Original Author: TanmoyTheBoT
+<a href="https://github.com/TanmoyTheBoT"><img src="https://github.com/TanmoyTheBoT.png" width="50" height="50" style="border-radius:50%" alt="TanmoyTheBoT"/></a>
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).
+
+---
+
+© TanmoyTheBoT 2025
+
