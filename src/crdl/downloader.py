@@ -893,11 +893,15 @@ class CrunchyrollDownloader:
                             # Check if this is the file we just downloaded
                             if f"audio_{audio_lang}" in file and f"{filename}_audio_{audio_lang}" in file:
                                 full_path = str(season_output_dir / file)
-                                # Check if file is not empty
-                                if os.path.getsize(full_path) > 0:
-                                    audio_files.append(full_path)
-                                    audio_languages.append(audio_lang)
-                                    logger.info(f"Found valid audio file for {audio_lang}: {full_path}")
+                                # Add long path prefix for Windows path length fix
+                                if not full_path.startswith('\\\\?\\'):
+                                    full_path = '\\\\?\\' + os.path.abspath(full_path)
+                                    # Check if file is not empty
+                                    if os.path.getsize(full_path) > 0:
+                                        audio_files.append(full_path)
+                                        audio_languages.append(audio_lang)
+                                        logger.info(f"Found valid audio file for {audio_lang}: {full_path}")
+
                                     
                                     # Track original audio for default selection during muxing
                                     if is_original:
@@ -919,6 +923,9 @@ class CrunchyrollDownloader:
                 
                 for file in os.listdir(season_output_dir):
                     full_path = str(season_output_dir / file)
+                    # Add long path prefix for Windows path length fix
+                    if not full_path.startswith('\\\\?\\'):
+                        full_path = '\\\\?\\' + os.path.abspath(full_path)
                     # Skip directories and non-files
                     if not os.path.isfile(full_path):
                         continue
@@ -965,7 +972,11 @@ class CrunchyrollDownloader:
                     
                     # Extract and download all available subtitles
                     if subtitle_streams and 'subtitles' in subtitle_streams:
-                        subtitle_files = download_subtitles(subtitle_streams['subtitles'], episode_id, season_output_dir, episode_data)
+                        # Use absolute long path prefix for season_output_dir
+                        long_path_dir = str(season_output_dir)
+                        if not long_path_dir.startswith('\\\\?\\'):
+                            long_path_dir = '\\\\?\\' + os.path.abspath(long_path_dir)
+                        subtitle_files = download_subtitles(subtitle_streams['subtitles'], episode_id, long_path_dir, episode_data)
                         logger.info(f"Downloaded {len(subtitle_files)} subtitle files for muxing")
                         
                         # Cleanup this stream token too
@@ -974,11 +985,17 @@ class CrunchyrollDownloader:
                 else:
                     # Fall back to using subtitles from the original stream info if available
                     if 'subtitles' in stream_info:
-                        subtitle_files = download_subtitles(stream_info['subtitles'], episode_id, season_output_dir, episode_data)
+                        # Use absolute long path prefix for season_output_dir
+                        long_path_dir = str(season_output_dir)
+                        if not long_path_dir.startswith('\\\\?\\'):
+                            long_path_dir = '\\\\?\\' + os.path.abspath(long_path_dir)
+                        subtitle_files = download_subtitles(stream_info['subtitles'], episode_id, long_path_dir, episode_data)
                         logger.info(f"Using {len(subtitle_files)} subtitles from original stream info")
                 
                 # Prepare for muxing with mkvtoolnix
                 output_file = str(season_output_dir / f"{filename}.mkv")
+                if not output_file.startswith('\\\\?\\'):
+                    output_file = '\\\\?\\' + os.path.abspath(output_file)
                 
                 # For multiple audio tracks, use the original audio as default if available
                 # If not, use the first audio file
@@ -1009,27 +1026,44 @@ class CrunchyrollDownloader:
                     # Add video and audio files to cleanup list
                     if os.path.exists(output_file):
                         if video_file:
-                            files_to_delete.append(video_file)
+                            # Use absolute long path for video_file
+                            vfile = video_file
+                            if not vfile.startswith('\\\\?\\'):
+                                vfile = '\\\\?\\' + os.path.abspath(vfile)
+                            files_to_delete.append(vfile)
                         
                         # Add all audio files
                         for audio_file in audio_files:
-                            if audio_file and os.path.exists(audio_file):
-                                files_to_delete.append(audio_file)
+                            if audio_file:
+                                afile = audio_file
+                                if not afile.startswith('\\\\?\\'):
+                                    afile = '\\\\?\\' + os.path.abspath(afile)
+                                if os.path.exists(afile):
+                                    files_to_delete.append(afile)
                         
                         # Add subtitle files
                         for sub_file in subtitle_files:
-                            if os.path.exists(sub_file):
-                                files_to_delete.append(sub_file)
+                            sfile = sub_file
+                            if not sfile.startswith('\\\\?\\'):
+                                sfile = '\\\\?\\' + os.path.abspath(sfile)
+                            if os.path.exists(sfile):
+                                files_to_delete.append(sfile)
                         
                         # Add chapter file
-                        if chapter_file and os.path.exists(chapter_file):
-                            files_to_delete.append(chapter_file)
+                        if chapter_file:
+                            cfile = chapter_file
+                            if not cfile.startswith('\\\\?\\'):
+                                cfile = '\\\\?\\' + os.path.abspath(cfile)
+                            if os.path.exists(cfile):
+                                files_to_delete.append(cfile)
                             
                         # Clean up all temporary files
                         clean_temp_files(files_to_delete)
                         
                         # Remove subtitles directory
                         subtitles_dir = str(season_output_dir / "subtitles")
+                        if not subtitles_dir.startswith('\\\\?\\'):
+                            subtitles_dir = '\\\\?\\' + os.path.abspath(subtitles_dir)
                         if os.path.exists(subtitles_dir):
                             clean_temp_files([], [subtitles_dir])
                 else:
@@ -1047,4 +1081,4 @@ class CrunchyrollDownloader:
                 
         except Exception as e:
             logger.error(f"Error in download_episode: {str(e)}", exc_info=True)
-            return False 
+            return False
