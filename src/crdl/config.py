@@ -21,7 +21,15 @@ class CrunchyrollConfig:
     DEVICE_NAME = 'Redmi Note 7'
 
     # Headers
-    AUTHORIZATION = 'Basic eHVuaWh2ZWRidDNtYmlzdWhldnQ6MWtJUzVkeVR2akUwX3JxYUEzWWVBaDBiVVhVbXhXMTE='
+    #
+    # This was inspired by https://github.com/anidl/multi-downloader-nx
+    # https://github.com/anidl/multi-downloader-nx/commit/36cff8b4961256748ba8e5b9adeee3d9dfa883a2
+    #
+    # the android tv basic token, its whitelisted on every endpoint
+
+    # AUTHORIZATION = 'Basic eHVuaWh2ZWRidDNtYmlzdWhldnQ6MWtJUzVkeVR2akUwX3JxYUEzWWVBaDBiVVhVbXhXMTE='
+
+    AUTHORIZATION = 'Basic Ym1icmt4eXgzZDd1NmpzZnlsYTQ6QUlONEQ1VkVfY3Awd1Z6Zk5vUDBZcUhVcllGcDloU2c='
     USER_AGENT = 'Crunchyroll/3.81.8 Android/15 okhttp/4.12.0'
     USER_AGENT_PC = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36'
 
