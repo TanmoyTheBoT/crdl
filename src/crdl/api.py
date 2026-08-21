@@ -47,9 +47,13 @@ class CrunchyrollAPI:
             bool: True if login was successful, False otherwise
         """
         headers = {
-            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json',
+            'Accept-Charset': 'UTF-8',
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+            'Request-Type': 'SignIn',
             'Authorization': self.config.AUTHORIZATION,
-            'User-Agent': self.config.USER_AGENT
+            'User-Agent': self.config.USER_AGENT,
+            'ETP-Anonymous-ID': self.config.DEVICE_ID
         }
         
         data = {
@@ -57,13 +61,15 @@ class CrunchyrollAPI:
             'username': self.username,
             'password': self.password,
             'scope': 'offline_access',
+            'client_id': self.config.CLIENT_ID,
+            'client_secret': self.config.CLIENT_SECRET,
             'device_id': self.config.DEVICE_ID,
             'device_type': self.config.DEVICE_TYPE,
             'device_name': self.config.DEVICE_NAME
         }
         
         try:
-            response = requests.post(self.config.AUTH_URL, headers=headers, data=data)
+            response = requests.post(self.config.AUTH_URL, headers=headers, data=data, timeout=30)
             response.raise_for_status()
             
             resp_data = response.json()
@@ -104,22 +110,27 @@ class CrunchyrollAPI:
         logger.info("Refreshing access token")
         
         headers = {
-            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json',
+            'Accept-Charset': 'UTF-8',
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
             'Authorization': self.config.AUTHORIZATION,
-            'User-Agent': self.config.USER_AGENT
+            'User-Agent': self.config.USER_AGENT,
+            'ETP-Anonymous-ID': self.config.DEVICE_ID
         }
         
         data = {
             'grant_type': 'refresh_token',
             'refresh_token': self.refresh_token,
             'scope': 'offline_access',
+            'client_id': self.config.CLIENT_ID,
+            'client_secret': self.config.CLIENT_SECRET,
             'device_id': self.config.DEVICE_ID,
             'device_type': self.config.DEVICE_TYPE,
             'device_name': self.config.DEVICE_NAME
         }
         
         try:
-            response = requests.post(self.config.AUTH_URL, headers=headers, data=data)
+            response = requests.post(self.config.AUTH_URL, headers=headers, data=data, timeout=30)
             response.raise_for_status()
             
             resp_data = response.json()
@@ -495,23 +506,26 @@ class CrunchyrollAPI:
         if not self.check_token_valid():
             logger.error("Failed to get valid token for streams request")
             raise ValueError("No valid authentication token available")
-            
+
         bucket = cms_data.get('bucket', '')
         policy = cms_data.get('policy', '')
         signature = cms_data.get('signature', '')
         key_pair_id = cms_data.get('key_pair_id', '')
-        
-        stream_url = f'https://cr-play-service.prd.crunchyrollsvc.com/v1/{guid}/web/chrome/play'
+            
+        stream_url = f'https://cr-play-service.prd.crunchyrollsvc.com/v3/{guid}/tv/android_tv/play'
         headers = {
             'Authorization': f'Bearer {self.access_token}',
-            'User-Agent': self.config.USER_AGENT
+            'User-Agent': self.config.USER_AGENT,
+            'Accept-Encoding': 'gzip',
+            'Connection': 'Keep-Alive'
         }
 
         params = {
             'Policy': policy,
             'Signature': signature,
             'Key-Pair-Id': key_pair_id,
-            'locale': locale
+            'locale': locale,
+            'queue': '0'
         }
         
         # Basic retry logic

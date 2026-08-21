@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Union
 import xml.etree.ElementTree as ET
 import subprocess
 
-from .config import sanitize_filename, save_json
+from .config import CrunchyrollConfig, sanitize_filename, save_json
 
 logger = logging.getLogger("CrunchyrollDownloader")
 
@@ -300,13 +300,12 @@ def download_subtitles(subtitles_data: Dict, episode_id: str, output_dir: Path, 
             logger.info(f"Downloading {lang} subtitle from {url}")
             
             headers = {
-                'User-Agent': 'Crunchyroll/3.78.3 Android/15 okhttp/4.12.0',
-                'Accept-Language': f'{lang},en-US;q=0.9',
-                'Referer': 'https://static.crunchyroll.com/',
-                'Origin': 'https://static.crunchyroll.com/'
+                'User-Agent': CrunchyrollConfig.USER_AGENT,
+                'Accept-Encoding': 'gzip',
+                'Connection': 'Keep-Alive'
             }
             
-            response = requests.get(url, headers=headers)
+            response = requests.get(url, headers=headers, timeout=30)
             
             if response.status_code != 200:
                 logger.error(f"Failed to download {lang} subtitle: {response.status_code}")

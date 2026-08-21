@@ -391,34 +391,36 @@ class CrunchyrollDownloader:
             license_url = license_url or self.api.config.LICENSE_URL 
             logger.info(f"Using license URL: {license_url}")
             
-            # Extract media ID from episode
-            media_id = None
+            # Extract the playback content ID from the MPD URL. The license
+            # service requires the same GUID used by the playback request.
+            content_id = None
             if mpd_url:
-                # Try to extract media ID for content-id header
-                media_id_match = re.search(r'/([^/]+)/evs', mpd_url)
-                if media_id_match:
-                    media_id = media_id_match.group(1)
-                    logger.info(f"Extracted media_id: {media_id}")
+                content_id_match = re.search(r'/v2/manifest/([^/]+)/', mpd_url)
+                if content_id_match:
+                    content_id = content_id_match.group(1)
+                    logger.info(f"Extracted content_id: {content_id}")
             
             
             headers = {
                 'Content-Type': 'application/octet-stream',
-                'User-Agent': CrunchyrollConfig.USER_AGENT_PC,
+                'User-Agent': CrunchyrollConfig.USER_AGENT,
                 'Accept': '*/*',
                 'Accept-Language': 'en-US,en;q=0.9',
                 'Accept-Encoding': 'gzip, deflate, br',
                 'Origin': 'https://static.crunchyroll.com',
                 'Referer': 'https://static.crunchyroll.com/',
                 'Connection': 'keep-alive',
+                'Pragma': 'no-cache',
+                'Cache-Control': 'no-cache',
                 'X-Cr-Content-Type': 'mp4',
                 'Sec-Ch-Ua': '"Chromium";v="129", "Google Chrome";v="129", "Not?A_Brand";v="24"',
                 'Sec-Ch-Ua-Mobile': '?0',
                 'Sec-Ch-Ua-Platform': '"Windows"'
             }
             
-            # Add content-id header if we have a media ID
-            if media_id:
-                headers['X-Cr-Content-Id'] = media_id
+            # Add the required playback content ID header.
+            if content_id:
+                headers['X-Cr-Content-Id'] = content_id
             
             # Add video token if available
             if video_token:
@@ -549,6 +551,8 @@ class CrunchyrollDownloader:
         Returns:
             bool: True if download was successful, False otherwise
         """
+        active_streams = {}
+
         try:
             # Get the keys from stream_info or fetch them if not present
             keys = stream_info.get('keys')
@@ -787,6 +791,8 @@ class CrunchyrollDownloader:
                     # Get stream info for this audio version
                     logger.info(f"Getting stream info for audio language {audio_lang}")
                     audio_stream = self.api.get_streams(audio_guid, 'en-US', cms_data, audio_guid)
+                    if audio_stream and audio_stream.get('token'):
+                        active_streams[audio_guid] = audio_stream['token']
                     
                     if not audio_stream or not audio_stream.get('url'):
                         logger.warning(f"Could not get stream URL for audio language {audio_lang}, skipping")
@@ -878,6 +884,7 @@ class CrunchyrollDownloader:
                     # Clean up this audio stream
                     if audio_stream.get('token'):
                         self.api.delete_streams(audio_guid, audio_stream['token'])
+                        active_streams.pop(audio_guid, None)
                     
                     if audio_result.returncode != 0:
                         logger.error(f"Audio download failed for {audio_lang} with return code: {audio_result.returncode}")
@@ -962,6 +969,8 @@ class CrunchyrollDownloader:
                     # Get stream info using the original version GUID
                     logger.info(f"Getting stream info for subtitles using original GUID: {original_guid}")
                     subtitle_streams = self.api.get_streams(original_guid, 'en-US', cms_data, original_guid)
+                    if subtitle_streams and subtitle_streams.get('token'):
+                        active_streams[original_guid] = subtitle_streams['token']
                     
                     # Extract and download all available subtitles
                     if subtitle_streams and 'subtitles' in subtitle_streams:
@@ -971,6 +980,7 @@ class CrunchyrollDownloader:
                         # Cleanup this stream token too
                         if subtitle_streams.get('token'):
                             self.api.delete_streams(original_guid, subtitle_streams['token'])
+                            active_streams.pop(original_guid, None)
                 else:
                     # Fall back to using subtitles from the original stream info if available
                     if 'subtitles' in stream_info:
@@ -1048,3 +1058,10 @@ class CrunchyrollDownloader:
         except Exception as e:
             logger.error(f"Error in download_episode: {str(e)}", exc_info=True)
             return False 
+        finally:
+            for guid, token in list(active_streams.items()):
+                try:
+                    logger.info(f"Cleaning up stream token for {guid}")
+                    self.api.delete_streams(guid, token, suppress_errors=True)
+                except Exception as cleanup_error:
+                    logger.error(f"Failed to clean up stream token for {guid}: {cleanup_error}")
