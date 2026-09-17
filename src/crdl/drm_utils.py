@@ -340,13 +340,13 @@ def extract_mpd_info(mpd_content: str) -> Dict:
         'license_url': None
     }
     
-    # Extract PSSH from the MPD
-    pssh_pattern = r'<cenc:pssh>([^<]+)</cenc:pssh>'
-    pssh_match = re.search(pssh_pattern, mpd_content)
-    
-    if pssh_match:
-        logger.info("Found PSSH in cenc:pssh element")
-        result['pssh'] = pssh_match.group(1)
+    # Extract Widevine PSSH (uuid edef8ba9-79d6-4ace-a3c8-27dcd51d21ed)
+    widevine_pattern = r'<ContentProtection[^>]*schemeIdUri="urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"[^>]*>.*?<cenc:pssh[^>]*>([^<]+)</cenc:pssh>'
+    widevine_match = re.search(widevine_pattern, mpd_content, re.DOTALL)
+
+    if widevine_match:
+        logger.info("Found Widevine PSSH")
+        result['pssh'] = widevine_match.group(1)
     else:
         # Try to find it in the non-standard Crunchyroll format
         cr_pssh_pattern = r'<ContentProtection.+?cenc:default_KID="([^"]+)".+?Widevine'

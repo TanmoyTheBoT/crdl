@@ -698,24 +698,14 @@ class CrunchyrollDownloader:
                 if stream_info.get('video_token'):
                     video_download_cmd.extend(["--header", f"x-cr-video-token: {stream_info['video_token']}"])
                 
-                # Add video decryption key if available
+                # Add ALL decryption keys (N_m3u8DL-RE will pick the right one)
                 if keys:
-                    logger.info("Adding decryption key to video download command")
-                    
-                    # Find a CONTENT type key
-                    content_key = None
+                    logger.info("Adding decryption keys to video download command")
                     for key in keys:
                         if key.get('type') == 'CONTENT':
-                            content_key = key
-                            break
-                    
-                    if not content_key:
-                        # If no CONTENT type key, use the first key
-                        content_key = keys[0]
-                    
-                    key_param = f"{content_key['key_id']}:{content_key['key']}"
-                    logger.info(f"Using key for video decryption: {key_param}")
-                    video_download_cmd.extend(["--key", key_param])
+                            key_param = f"{key['key_id']}:{key['key']}"
+                            video_download_cmd.extend(["--key", key_param])
+                            logger.info(f"Added key: {key['key_id']}")
                 else:
                     logger.warning("No keys available for video download, attempting without decryption (may fail for DRM content)")
                 
@@ -850,28 +840,13 @@ class CrunchyrollDownloader:
                     
                     # Add audio decryption key if available
                     if audio_keys:
-                        # Find a CONTENT type key for audio, or use any available key
-                        content_key = None
-                        key_used = None
-                        
-                        # First try to find a CONTENT key
+                        # Add ALL decryption keys (N_m3u8DL-RE will pick the right one)
+                        logger.info(f"Adding decryption keys for {audio_lang}")
                         for key in audio_keys:
                             if key.get('type') == 'CONTENT':
-                                content_key = key
-                                key_used = "CONTENT"
-                                break
-                        
-                        # If no CONTENT key, try any key
-                        if not content_key and audio_keys:
-                            content_key = audio_keys[0]
-                            key_used = "default"
-                            
-                        if content_key:
-                            key_param = f"{content_key['key_id']}:{content_key['key']}"
-                            logger.info(f"Using {key_used} key for {audio_lang} decryption")
-                            logger.info(f"  Key ID: {content_key['key_id']}")
-                            logger.info(f"  Key: {content_key['key']}")
-                            audio_download_cmd.extend(["--key", key_param])
+                                key_param = f"{key['key_id']}:{key['key']}"
+                                audio_download_cmd.extend(["--key", key_param])
+                                logger.info(f"Added key: {key['key_id']}")
                     else:
                         logger.warning(f"No keys available for {audio_lang} download")
                     
