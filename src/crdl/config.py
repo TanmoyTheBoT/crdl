@@ -29,10 +29,10 @@ class CrunchyrollConfig:
 
     # AUTHORIZATION = 'Basic eHVuaWh2ZWRidDNtYmlzdWhldnQ6MWtJUzVkeVR2akUwX3JxYUEzWWVBaDBiVVhVbXhXMTE='
 
-    AUTHORIZATION = 'Basic cmpzMGx0eDBkYndrbGl3eGR6ZGY6NFY3cmYyMS1VRlhlWi01WEFkMFhfUVB3cjFndV9pMXM='
+    AUTHORIZATION = 'Basic ZXZ4YzVybGN1bnd4cm91YWpmeHI6NkJGWGM1SUk3UWx2Z3NFbzdiVjBuWUNfN1VRLXVlSVM='
     CLIENT_ID = 'rjs0ltx0dbwkliwxdzdf'
     CLIENT_SECRET = '4V7rf21-UFXeZ-5XAd0X_QPwr1gu_i1s'
-    USER_AGENT = 'Crunchyroll/ANDROIDTV/3.65.0_22347 (Android 12; en-US; SHIELD Android TV Build/SR1A.211012.001)'
+    USER_AGENT = 'Crunchyroll/ANDROIDTV/3.70.0_22358 (Android 12; en-US; SHIELD Android TV Build/SR1A.220624.014)'
     USER_AGENT_PC = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36'
 
     
